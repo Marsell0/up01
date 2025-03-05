@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions',
+
     'apps.users',
     'apps.equipment',
     'apps.reservation',
@@ -167,3 +169,6 @@ CORS_ALLOW_CREDENTIALS = True
 AXES_LOCKOUT_TEMPLATE = 'axes/lockout.html'
 
 AXES_COOLOFF_TIME = 0.05
+AXES_ENABLED = False
+
+AUTH_USER_MODEL = "users.CustomUser"
