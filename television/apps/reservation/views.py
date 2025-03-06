@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
-from apps.users.permissions import IsAdmin, IsOperator
+from rest_framework.permissions import IsAuthenticated
+from apps.users.permissions import IsOperator
 from .models import Reservation
 from .serializers import ReservationSerializer
 
@@ -10,24 +10,20 @@ class ReservationViewSet(viewsets.ModelViewSet):
     serializer_class = ReservationSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'list', 'retrieve']:
+        if self.action in ['create', 'list', 'retrieve', 'destroy']:
             return [IsOperator()]
-        elif self.action in ['approve', 'reject']:
-            return [IsAdmin()]
-        return [IsAdmin()]
-
-    @action(detail=True, methods=['post'])
-    def approve(self, request, pk=None):
-        """ Подтверждение бронирования администратором """
-        booking = self.get_object()
-        booking.status = 'approved'
-        booking.save()
-        return Response({'status': 'Бронирование подтверждено'}, status=status.HTTP_200_OK)
-
-    @action(detail=True, methods=['post'])
-    def reject(self, request, pk=None):
-        """ Отклонение бронирования администратором """
-        booking = self.get_object()
-        booking.status = 'rejected'
-        booking.save()
-        return Response({'status': 'Бронирование отклонено'}, status=status.HTTP_200_OK)
+        return [IsAuthenticated()]
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(operator=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.operator != request.user:
+            return Response({"error": "Вы можете отменять только свои бронирования."}, status=status.HTTP_403_FORBIDDEN)
+        self.perform_destroy(instance)
+        return Response({"message": "Бронирование отменено."}, status=status.HTTP_204_NO_CONTENT)
